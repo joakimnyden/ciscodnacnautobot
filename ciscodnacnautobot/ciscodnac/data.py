@@ -287,7 +287,6 @@ class Data:
 
                     # Sync Device IP Address
                     device.primary_ip4 = Nautobot.Sync.ipaddress(
-                    device.primary_ip4 = Nautobot.Sync.ipaddress(
                         tenant=tenant,
                         address=device.managementIpAddress,
                         hostname=device.hostname,
