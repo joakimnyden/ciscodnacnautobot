@@ -1,9 +1,11 @@
 from django.db import models
 from django.urls import reverse
-from utilities.querysets import RestrictedQuerySet
+import uuid
+from nautobot.utilities.querysets import RestrictedQuerySet
+from nautobot.core.models import BaseModel
 
 
-class Settings(models.Model):
+class Settings(BaseModel):
     hostname = models.CharField(max_length=2000, unique=True, blank=True, null=True)
     username = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
@@ -13,11 +15,11 @@ class Settings(models.Model):
     objects = RestrictedQuerySet.as_manager()
 
     class Meta:
-        app_label = "ciscodnacnetbox"
+        app_label = "ciscodnacnautobot"
         ordering = ["hostname"]
 
     def __str__(self):
         return self.hostname
 
     def get_absolute_url(self):
-        return reverse("plugins:ciscodnacnetbox:settings")
+        return reverse("plugins:ciscodnacnautobot:settings")

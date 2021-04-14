@@ -1,19 +1,18 @@
 from decimal import Decimal
 import ipaddress
 from django.shortcuts import get_object_or_404
-from extras.models import Tag
-from dcim.models import Site, Device, DeviceRole, DeviceType, Manufacturer
-from ipam.models import IPAddress
-from dcim.choices import DeviceStatusChoices
-from tenancy.models import Tenant
-from utilities.choices import ColorChoices
+from nautobot.extras.models import Tag, Status
+from nautobot.dcim.models import Site, Device, DeviceRole, DeviceType, Manufacturer
+from nautobot.ipam.models import IPAddress
+from nautobot.tenancy.models import Tenant
+from nautobot.utilities.choices import ColorChoices
 from .utilities import System
 
 
-class Netbox:
+class Nautobot:
     class Sync:
         """
-        Sync data to NetBox Models
+        Sync data to Nautobot Models
         """
 
         @staticmethod
@@ -41,7 +40,7 @@ class Netbox:
         @staticmethod
         def tags(**kwargs):
             """
-            Handle Tag operations with NetBox
+            Handle Tag operations with Nautobot
             """
             if "system" in kwargs["task"]:
                 # Create mandatory Cisco DNA Center Tag
@@ -50,12 +49,12 @@ class Netbox:
                         name="Cisco DNA Center",
                         slug="cisco-dna-center",
                         color=ColorChoices.COLOR_BLUE,
-                        description="Managed by ciscodnacnetbox",
+                        description="Managed by ciscodnacnautobot",
                     )
                 else:
                     System.PluginTag.filter().update(
                         name="Cisco DNA Center",
-                        description="Managed by ciscodnacnetbox",
+                        description="Managed by ciscodnacnautobot",
                     )
                 return System.PluginTag.get()
             elif "update" in kwargs["task"]:
@@ -75,7 +74,7 @@ class Netbox:
                     __obj = Site.objects.get(name=kwargs["filter"])
 
                 if kwargs["tag"] not in __obj.tags.all():
-                    # Add Cisco DNA Center Tag to NetBox Object
+                    # Add Cisco DNA Center Tag to Nautobot Object
                     __obj.tags.add(kwargs["tag"])
                     __obj.save()
             else:
@@ -84,10 +83,10 @@ class Netbox:
         @staticmethod
         def site(tenant, site):
             """
-            Handle Site operations with NetBox
+            Handle Site operations with Nautobot
             """
 
-            # Gather site in Netbox (site name isn't unique, even with multiple tenants)
+            # Gather site in Nautobot (site name isn't unique, even with multiple tenants)
             if Site.objects.filter(name=site.siteNameHierarchy).exists() is False:
                 Site.objects.create(
                     name=site.siteNameHierarchy,
@@ -133,10 +132,10 @@ class Netbox:
         @staticmethod
         def manufacturer(manufacture, tenant):
             """
-            Handle Manufacturer operations with NetBox
+            Handle Manufacturer operations with Nautobot
             """
 
-            # Gather manufacture in Netbox
+            # Gather manufacture in Nautobot
             if Manufacturer.objects.filter(name=manufacture).exists() is False:
                 Manufacturer.objects.create(
                     name=manufacture,
@@ -153,10 +152,10 @@ class Netbox:
         @staticmethod
         def devicetype(manufacture, model, slug, tenant):
             """
-            Handle DeviceType operations with NetBox
+            Handle DeviceType operations with Nautobot
             """
 
-            # Gather DeviceType in Netbox
+            # Gather DeviceType in Nautobot
             if DeviceType.objects.filter(manufacturer=manufacture, model=model).exists() is False:
                 DeviceType.objects.create(
                     manufacturer=manufacture,
@@ -175,10 +174,10 @@ class Netbox:
         @staticmethod
         def devicerole(role, slug, tenant):
             """
-            Handle DeviceRole operations with NetBox
+            Handle DeviceRole operations with Nautobot
             """
 
-            # Gather DeviceRole in Netbox
+            # Gather DeviceRole in Nautobot
             if DeviceRole.objects.filter(name=role).exists() is False:
                 DeviceRole.objects.create(
                     name=role,
@@ -199,16 +198,16 @@ class Netbox:
         @staticmethod
         def device(tenant, device):
             """
-            Handle Device operations with NetBox
+            Handle Device operations with Nautobot
             """
 
             # Check device reachability in Cisco DNA Center
             if device.reachabilityStatus == "Reachable":
-                device.status = DeviceStatusChoices.STATUS_ACTIVE
+                device.status = Status.objects.get(slug="active")
             else:
-                device.status = DeviceStatusChoices.STATUS_FAILED
+                device.status = Status.objects.get(slug="failed")
 
-            # Gather Device in Netbox
+            # Gather Device in Nautobot
             if Device.objects.filter(serial=device.serialNumber).exists() is False:
                 if Device.objects.filter(
                     primary_ip4=device.primary_ip4,
@@ -271,7 +270,7 @@ class Netbox:
                     sync = "Error"
                     pass
 
-            # Assign IP Address to Device in NetBox
+            # Assign IP Address to Device in Nautobot
             IPAddress.objects.filter(address=str(device.primary_ip4), tenant=Tenant.objects.get(name=tenant).id,).update(
                 assigned_object_id=Device.objects.get(serial=device.serialNumber).id,
             )
@@ -281,21 +280,21 @@ class Netbox:
         @staticmethod
         def ipaddress(tenant, address, hostname):
             """
-            Handle IPAddress operations with NetBox
+            Handle IPAddress operations with Nautobot
             """
 
-            # Gather IPAddress in Netbox
+            # Gather IPAddress in Nautobot
             if IPAddress.objects.filter(address=address, tenant=Tenant.objects.get(name=tenant).id).exists() is False:
                 IPAddress.objects.create(
                     address=address,
-                    status=DeviceStatusChoices.STATUS_ACTIVE,
+                    status=Status.objects.get(slug="active"),
                     dns_name=hostname,
                     description="Managed by {}".format(tenant),
                     tenant=Tenant.objects.get(name=tenant),
                 )
             else:
                 IPAddress.objects.filter(address=address, tenant=Tenant.objects.get(name=tenant).id).update(
-                    status=DeviceStatusChoices.STATUS_ACTIVE,
+                    status=Status.objects.get(slug="active"),
                     dns_name=hostname,
                     description="Managed by {}".format(tenant),
                     tenant=Tenant.objects.get(name=tenant).id,
@@ -306,28 +305,28 @@ class Netbox:
         @staticmethod
         def database(**kwargs):
             """
-            Purge data from NetBox Database - when running Sync
+            Purge data from Nautobot Database - when running Sync
             """
 
             # Delete devices related to Tenant
             if kwargs["type"] == "devices":
 
-                # Unique Serial Numbers in Netbox
-                netbox_serials = [d.serial for d in Device.objects.filter(tenant=Tenant.objects.get(name=kwargs["tenant"]).id)]
+                # Unique Serial Numbers in Nautobot
+                nautobot_serials = [d.serial for d in Device.objects.filter(tenant=Tenant.objects.get(name=kwargs["tenant"]).id)]
 
                 # Unique Serial Numbers in Cisco DNA Center Instance
                 dnac_serials = []
                 for d in kwargs["data"]:
                     dnac_serials.append(d["serial"])
 
-                # Diff between NetBox and Cisco DNA Center Instance
-                purge = list(set(netbox_serials) - set(dnac_serials))
+                # Diff between Nautobot and Cisco DNA Center Instance
+                purge = list(set(nautobot_serials) - set(dnac_serials))
 
                 if len(purge) == 0:
                     return False
                 else:
 
-                    # Remove diff in NetBox
+                    # Remove diff in Nautobot
                     try:
                         for serial in purge:
                             Device.objects.filter(id=Device.objects.get(serial=serial).id).delete()
@@ -338,22 +337,22 @@ class Netbox:
             # Delete sites related to Tenant
             elif kwargs["type"] == "sites":
 
-                # Unique slug/uuid in NetBox
-                netbox_sites = [s.slug for s in Site.objects.filter(tenant=Tenant.objects.get(name=kwargs["tenant"]).id)]
+                # Unique slug/uuid in Nautobot
+                nautobot_sites = [s.slug for s in Site.objects.filter(tenant=Tenant.objects.get(name=kwargs["tenant"]).id)]
 
                 # Unique Site id/uuid in Cisco DNA Center Instance
                 dnac_sites = []
                 for s in kwargs["data"]:
                     dnac_sites.append(s["slug"])
 
-                # Diff between NetBox and Cisco DNA Center Instance
-                purge = list(set(netbox_sites) - set(dnac_sites))
+                # Diff between Nautobot and Cisco DNA Center Instance
+                purge = list(set(nautobot_sites) - set(dnac_sites))
 
                 if len(purge) == 0:
                     return False
                 else:
 
-                    # Remove diff in NetBox
+                    # Remove diff in Nautobot
                     try:
                         for uuid in purge:
                             Site.objects.filter(slug=uuid).delete()
@@ -370,7 +369,7 @@ class Netbox:
             Delete Tenant related to Cisco DNA Center Instance
             """
 
-            # Get NetBox tenants based on Cisco DNA Center Tag
+            # Get Nautobot tenants based on Cisco DNA Center Tag
             results = {}
             dnac_tag = System.PluginTag.get()
             tenant_name = get_object_or_404(Tenant, pk=kwargs["pk"], tags=dnac_tag).name

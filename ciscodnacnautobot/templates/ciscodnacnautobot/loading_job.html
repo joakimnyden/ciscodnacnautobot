@@ -4,7 +4,7 @@
 <script type="text/javascript">
     function job(){
         var value= $.ajax({ 
-            url: "{% url 'plugins:ciscodnacnetbox:job_status' data.id %}", 
+            url: "{% url 'plugins:ciscodnacnautobot:job_status' data.id %}", 
             async: false
         }).responseText;
         value = JSON.parse(value);
@@ -21,12 +21,12 @@
             task = job()
             if (task.status == "finished") {
                 done = true;
-                window.location.replace("/plugins/ciscodnacnetbox/sync/full/"+task.id+"/");
+                window.location.replace("/plugins/ciscodnacnautobot/sync/full/"+task.id+"/");
                 break
             }
             if (task.status == "failed") {
                 done = true;
-                window.location.replace("/plugins/ciscodnacnetbox/sync/full/"+task.id+"/failed/");
+                window.location.replace("/plugins/ciscodnacnautobot/sync/full/"+task.id+"/failed/");
                 break
             }
             await sleep(4000);
@@ -39,7 +39,7 @@
 {% block content %}
 
 <div class="pull-right noprint">
-<a href="/plugins/ciscodnacnetbox/status/" class="btn btn-primary">
+<a href="/plugins/ciscodnacnautobot/status/" class="btn btn-primary">
 <span class="mdi mdi-view-dashboard" aria-hidden="true"></span> Status
 </a>
 </div>

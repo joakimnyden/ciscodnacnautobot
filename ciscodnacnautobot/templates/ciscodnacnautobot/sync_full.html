@@ -5,13 +5,13 @@
 
 
 <div class="pull-right noprint">
-<a href="/plugins/ciscodnacnetbox/status/" class="btn btn-primary">
+<a href="/plugins/ciscodnacnautobot/status/" class="btn btn-primary">
 <span class="mdi mdi-view-dashboard" aria-hidden="true"></span> Status
 </a>
 </div>
 
 <h1>Cisco DNA Center</h1>
-<h2>Purge Tenant</h2>
+<h2>Full Sync</h2>
 
 <div class="row">
 <div class="col-md-12">
@@ -24,7 +24,6 @@
 <th>Cisco DNA Center</th>
 <th>Sites</th>
 <th>Devices</th>
-<th>IP Address</th>
 </tr>
 </thead>
 {% for tenant, dnac in data.items %}
@@ -38,9 +37,6 @@
         </td>
         <td>
             {{ dnac.devices }}
-        </td>
-        <td>
-            {{ dnac.ipaddress }}
         </td>
     </tr>
 </tbody>

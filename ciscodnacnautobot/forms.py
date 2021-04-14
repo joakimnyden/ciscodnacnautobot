@@ -1,5 +1,7 @@
-from utilities.forms import BootstrapMixin, StaticSelect2
-from extras.forms import CustomFieldModelForm
+#from utilities.forms import BootstrapMixin, StaticSelect2
+from nautobot.utilities.forms import BootstrapMixin, StaticSelect2
+#from extras.forms import CustomFieldModelForm
+from nautobot.extras.forms import CustomFieldModelForm
 from .models import Settings
 
 

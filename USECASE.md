@@ -1,13 +1,11 @@
-Cisco DNA Center Integration with NetBox
+Cisco DNA Center Integration with Nautbot
 =====================================
-_(Sync Cisco DNA Center Inventory with NetBox)_
+_(Sync Cisco DNA Center Inventory with Nautobot)_
 
-This [NetBox](https://netbox.readthedocs.io/en/stable/) plugin allows you to sync Inventory from Cisco DNA Center to NetBox Database.  
+This [Nautobot](https://nautobot.readthedocs.io/en/latest/) plugin allows you to sync Inventory from Cisco DNA Center to Nautobot Database.  
 Instead of manually entering all the serialnumbers, hostname and IP Addresses.
 
-Published on Cisco DevNet Code Exchange [ciscodnacnetbox](https://developer.cisco.com/codeexchange/github/repo/robertcsapo/ciscodnacnetbox)
-
-Follow the instructions to setup NetBox on their [documentation](https://netbox.readthedocs.io/en/stable/#getting-started).  
+Follow the instructions to setup Nautobot on their [documentation](https://nautobot.readthedocs.io/en/latest/#getting-started).  
 You can use Cisco DevNet Sandboxes to test the plugin.
 
 ## Related Sandbox

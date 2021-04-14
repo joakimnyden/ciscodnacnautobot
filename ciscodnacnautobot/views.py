@@ -6,14 +6,14 @@ from django.template import loader
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.views.generic import View
-from utilities.forms import ConfirmationForm
-from tenancy.models import Tenant
-from netbox.views import generic
+from nautobot.utilities.forms import ConfirmationForm
+from nautobot.tenancy.models import Tenant
+from nautobot.core.views import generic
 from .models import Settings
 from .forms import SettingsForm
 from .tables import SettingsTable
 from .ciscodnac.data import Data
-from .ciscodnac.netbox import Netbox
+from .ciscodnac.nautobot import Nautobot
 from .ciscodnac.utilities import System
 
 
@@ -24,7 +24,7 @@ class SettingsView(generic.ObjectListView):
     
     queryset = Settings.objects.all()
     table = SettingsTable
-    template_name = "ciscodnacnetbox/settings.html"
+    template_name = "ciscodnacnautobot/settings.html"
 
 
 class SettingsEdit(generic.ObjectEditView):
@@ -34,7 +34,7 @@ class SettingsEdit(generic.ObjectEditView):
 
     queryset = Settings.objects.all()
     model_form = SettingsForm
-    template_name = "ciscodnacnetbox/settings_edit.html"
+    template_name = "ciscodnacnautobot/settings_edit.html"
 
 
 class SettingsDelete(generic.ObjectDeleteView):
@@ -60,23 +60,23 @@ class StatusView(View):
     """
 
     def get(self, request):
-        # Check that NetBox tag exists for Cisco DNA Center
-        Netbox.Sync.tags(task="system")
+        # Check that Nautobot tag exists for Cisco DNA Center
+        Nautobot.Sync.tags(task="system")
 
         # Check that Cisco DNA Center Settings exists
         if Settings.objects.filter().exists() is False:
-            return redirect("/plugins/ciscodnacnetbox/settings/")
+            return redirect("/plugins/ciscodnacnautobot/settings/")
 
         data = Data.status()
         return render(
             request,
-            "ciscodnacnetbox/status.html",
+            "ciscodnacnautobot/status.html",
             {
                 "dnac": data["dnac"],
-                "netbox": request.build_absolute_uri("/"),
-                "netbox_sites": data["netbox"]["sites"],
-                "netbox_devices": data["netbox"]["devices"],
-                "netbox_tenants": data["netbox"]["tenants"],
+                "nautobot": request.build_absolute_uri("/"),
+                "nautobot_sites": data["nautobot"]["sites"],
+                "nautobot_devices": data["nautobot"]["devices"],
+                "nautobot_tenants": data["nautobot"]["tenants"],
             },
         )
 
@@ -89,7 +89,7 @@ class SyncFull(View):
     def get(self, request, **kwargs):
         # Check that we have Cisco DNA Center settings
         if Settings.objects.filter().exists() is False:
-            return redirect("/plugins/ciscodnacnetbox/settings/")
+            return redirect("/plugins/ciscodnacnautobot/settings/")
 
         # Check if RQ workers are running
         if System.RQ.status() is False:
@@ -102,8 +102,8 @@ class SyncFull(View):
                 template.render(
                     {
                         "error": error_msg,
-                        "exception": "ciscodnacnetbox plugin - RQ",
-                        "netbox_version": settings.VERSION,
+                        "exception": "ciscodnacnautobot plugin - RQ",
+                        "nautobot_version": settings.VERSION,
                         "python_version": platform.python_version(),
                     }
                 )
@@ -116,14 +116,14 @@ class SyncFull(View):
                 raise Http404()
             return render(
                 request,
-                "ciscodnacnetbox/sync_full.html",
+                "ciscodnacnautobot/sync_full.html",
                 {
                     "data": data,
                 },
             )
         return render(
             request,
-            "ciscodnacnetbox/loading_job.html",
+            "ciscodnacnautobot/loading_job.html",
             {
                 "data": data,
             },
@@ -139,7 +139,7 @@ class SyncFullFailed(View):
         data = Data.job_status(id)
         return render(
             request,
-            "ciscodnacnetbox/sync_full_failed.html",
+            "ciscodnacnautobot/sync_full_failed.html",
             {
                 "data": data,
             },
@@ -167,7 +167,7 @@ class DeviceView(View):
         data = Data.devices(**kwargs)
         return render(
             request,
-            "ciscodnacnetbox/devices.html",
+            "ciscodnacnautobot/devices.html",
             {
                 "data": data,
             },
@@ -183,7 +183,7 @@ class SyncDevices(View):
         data = Data.sync_devices(**kwargs)
         return render(
             request,
-            "ciscodnacnetbox/sync_devices.html",
+            "ciscodnacnautobot/sync_devices.html",
             {
                 "data": data,
             },
@@ -199,7 +199,7 @@ class SitesView(View):
         data = Data.sites(**kwargs)
         return render(
             request,
-            "ciscodnacnetbox/sites.html",
+            "ciscodnacnautobot/sites.html",
             {
                 "data": data,
             },
@@ -215,7 +215,7 @@ class SyncSites(View):
         data = Data.sync_sites(**kwargs)
         return render(
             request,
-            "ciscodnacnetbox/sync_sites.html",
+            "ciscodnacnautobot/sync_sites.html",
             {
                 "data": data,
             },
@@ -224,12 +224,12 @@ class SyncSites(View):
 
 class PurgeTenant(View):
     """
-    Purge NetBox Tenants related to Cisco DNA Center
+    Purge Nautobot Tenants related to Cisco DNA Center
     """
 
     def get(self, request, **kwargs):
 
-        # Verify that the Tenant exists in NetBox
+        # Verify that the Tenant exists in Nautobot
         tenant = get_object_or_404(Tenant, pk=kwargs["pk"], tags=System.PluginTag.get())
 
         # Confirm deletion
@@ -240,17 +240,17 @@ class PurgeTenant(View):
             {
                 "obj": tenant,
                 "form": form,
-                "return_url": reverse("plugins:ciscodnacnetbox:purge_tenant", args=(kwargs["pk"],)),
+                "return_url": reverse("plugins:ciscodnacnautobot:purge_tenant", args=(kwargs["pk"],)),
             },
         )
 
     def post(self, request, **kwargs):
 
-        # Delete Tenant in NetBox
+        # Delete Tenant in Nautobot
         data = Data.purge_tenant(**kwargs)
         return render(
             request,
-            "ciscodnacnetbox/purge_tenant.html",
+            "ciscodnacnautobot/purge_tenant.html",
             {
                 "data": data,
             },

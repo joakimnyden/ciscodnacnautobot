@@ -1,7 +1,14 @@
 import django_tables2 as tables
 from django_tables2.utils import A
 from django.utils.safestring import mark_safe
+"""
 from utilities.tables import (
+    BaseTable,
+    BooleanColumn,
+    ToggleColumn,
+)
+"""
+from nautobot.utilities.tables import (
     BaseTable,
     BooleanColumn,
     ToggleColumn,
@@ -18,7 +25,7 @@ class MaskedPassword(tables.Column):
 class SettingsTable(BaseTable):
     pk = ToggleColumn()
     hostname = tables.LinkColumn(
-        "plugins:ciscodnacnetbox:settings_edit", args=[A("pk")]
+        "plugins:ciscodnacnautobot:settings_edit", args=[A("pk")]
     )
     username = tables.Column()
     password = MaskedPassword()

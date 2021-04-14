@@ -1,14 +1,20 @@
 import re
 from django_rq import get_worker
 from django_rq.queues import get_connection
+"""
 from extras.models import Tag
 from dcim.models import Site
 from tenancy.models import Tenant
+"""
+from nautobot.extras.models import Tag
+from nautobot.dcim.models import Site
+from nautobot.tenancy.models import Tenant
+
 
 class Plugin:
-    name = "ciscodnacnetbox"
+    name = "ciscodnacnautobot"
     version = "1.0"
-    description = "Cisco DNA Center Integration with NetBox"
+    description = "Cisco DNA Center Integration with Nautobot"
     author = "Robert Csapo"
     author_email = "rcsapo@cisco.com"
 

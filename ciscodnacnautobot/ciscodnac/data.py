@@ -1,11 +1,11 @@
 from . import CiscoDNAC
 from cacheops import cache, CacheMiss
-from dcim.models import Site, Device
-from dcim.choices import DeviceStatusChoices
-from tenancy.models import Tenant
+from nautobot.dcim.models import Site, Device
+from nautobot.tenancy.models import Tenant
+from nautobot.extras.models import Status 
 from django_rq import get_queue, job
 from ..models import Settings
-from .netbox import Netbox
+from .nautobot import Nautobot
 from .utilities import System
 
 
@@ -23,8 +23,8 @@ def full_sync(**kwargs):
     # Count the synced items
     for tenant in sites:
         data[tenant] = {}
-        Netbox.Purge.database(tenant=tenant, type="devices", data=devices[tenant])
-        Netbox.Purge.database(tenant=tenant, type="sites", data=sites[tenant])
+        Nautobot.Purge.database(tenant=tenant, type="devices", data=devices[tenant])
+        Nautobot.Purge.database(tenant=tenant, type="sites", data=sites[tenant])
     for tenant in sites:
         data[tenant]["sites"] = len(sites[tenant])
     for tenant in devices:
@@ -64,19 +64,19 @@ class Data:
                 if device.deviceSupportLevel == "Supported":
                     data["dnac"][tenant]["devices"] += 1
 
-        # Gather data from NetBox
-        data["netbox"] = {}
+        # Gather data from Nautobot
+        data["nautobot"] = {}
         dnac_tag = System.PluginTag.get()
-        data["netbox"]["sites"] = len(Site.objects.filter(tags=dnac_tag))
-        data["netbox"]["devices"] = len(Device.objects.filter(tags=dnac_tag))
-        data["netbox"]["tenants"] = {}
+        data["nautobot"]["sites"] = len(Site.objects.filter(tags=dnac_tag))
+        data["nautobot"]["devices"] = len(Device.objects.filter(tags=dnac_tag))
+        data["nautobot"]["tenants"] = {}
 
         # Gather Tenants that is related to Cisco DNA Center
         for tenant in Tenant.objects.filter(tags=dnac_tag):
             managed = False
             if str(tenant) in [*data["dnac"]]:
                 managed = True
-            data["netbox"]["tenants"][tenant.name] = {
+            data["nautobot"]["tenants"][tenant.name] = {
                 "id": tenant.id,
                 "description": tenant.description,
                 "created": tenant.created,
@@ -149,18 +149,18 @@ class Data:
 
         # Check if ongoing RQ Job is ongoing
         try:
-            job = cache.get("ciscodnacnetbox_bg")
+            job = cache.get("ciscodnacnautobot_bg")
         except CacheMiss:
             # If not, start full sync task
             job = full_sync.delay(**kwargs)
-            cache.set("ciscodnacnetbox_bg", job.id, timeout=600)
+            cache.set("ciscodnacnautobot_bg", job.id, timeout=600)
 
         # Get Job Status
-        j = queue.fetch_job(cache.get("ciscodnacnetbox_bg"))
+        j = queue.fetch_job(cache.get("ciscodnacnautobot_bg"))
         if "finished" == j.get_status():
             # Start again, if cache expired
             job = full_sync.delay(**kwargs)
-            cache.set("ciscodnacnetbox_bg", job.id, timeout=600)
+            cache.set("ciscodnacnautobot_bg", job.id, timeout=600)
         data["id"] = str(j.id)
         data["task"] = str(j.func_name)
         return data
@@ -171,8 +171,8 @@ class Data:
         Sync Cisco DNA Center Sites
         """
 
-        # Sync mandatory tag for Cisco DNA Center in NetBox
-        dnac_tag = Netbox.Sync.tags(task="system")
+        # Sync mandatory tag for Cisco DNA Center in Nautobot
+        dnac_tag = Nautobot.Sync.tags(task="system")
 
         # Gather all sites in Cisco DNA Center Network Designs
         data = {}
@@ -180,9 +180,9 @@ class Data:
         for tenant, dnac in tenants.dnac.items():
             results = []
             # Sync Cisco DNA Center Tenant
-            Netbox.Sync.tenants(task="system", tenant=tenant, slug=tenant.replace(".", "-"))
+            Nautobot.Sync.tenants(task="system", tenant=tenant, slug=tenant.replace(".", "-"))
             # Add tag to Cisco DNA Center Tenant
-            Netbox.Sync.tags(
+            Nautobot.Sync.tags(
                 task="update",
                 model="tenant",
                 filter=tenant,
@@ -190,17 +190,17 @@ class Data:
             )
             for site in tenants.sites(tenant=dnac):
                 # Sync Site
-                # Unique name for `Global` as it can't be duplicate in NetBox
+                # Unique name for `Global` as it can't be duplicate in Nautobot
                 if site.siteNameHierarchy == "Global":
                     suffix = site.id.split("-")
                     site.siteNameHierarchy = "{} {}".format(site.siteNameHierarchy, suffix[0])
 
                 # Use Cisco DNA Center UUID for Site as Slug
                 site.slug = site.id
-                site.sync = Netbox.Sync.site(tenant=tenant, site=site)
+                site.sync = Nautobot.Sync.site(tenant=tenant, site=site)
 
                 # Add tag to Site
-                Netbox.Sync.tags(
+                Nautobot.Sync.tags(
                     task="update",
                     model="site",
                     filter=site.siteNameHierarchy,
@@ -218,8 +218,8 @@ class Data:
                 }
                 results.append(result)
 
-            # If site is removed in Cisco DNA Center, then remove in NetBox
-            Netbox.Purge.database(tenant=tenant, type="sites", data=results)
+            # If site is removed in Cisco DNA Center, then remove in Nautobot
+            Nautobot.Purge.database(tenant=tenant, type="sites", data=results)
             results = sorted(results, key=lambda k: k["name"], reverse=False)
             data[tenant] = results
         return data
@@ -231,7 +231,7 @@ class Data:
         """
 
         # Sync mandatory tag for Cisco DNA Center
-        dnac_tag = Netbox.Sync.tags(task="system")
+        dnac_tag = Nautobot.Sync.tags(task="system")
 
         # Gather all devices in Cisco DNA Center Inventory
         data = {}
@@ -239,7 +239,7 @@ class Data:
         for tenant, dnac in tenants.dnac.items():
             results = []
 
-            # NetBox sites mandatory to assign sites
+            # Nautobot sites mandatory to assign sites
             if System.Check.sites(tenant=tenant) is False:
                 data[tenant] = [{"sync_status": "Error: Sync sites first"}]
                 continue
@@ -250,8 +250,8 @@ class Data:
             for device in tenants.devices(tenant=dnac):
 
                 # Sync Cisco DNA Center Tenant
-                Netbox.Sync.tenants(task="system", tenant=tenant, slug=tenant.replace(".", "-"))
-                Netbox.Sync.tags(
+                Nautobot.Sync.tenants(task="system", tenant=tenant, slug=tenant.replace(".", "-"))
+                Nautobot.Sync.tags(
                     task="update",
                     model="tenant",
                     filter=tenant,
@@ -263,18 +263,18 @@ class Data:
 
                     # Sync Manufacture
                     device.manufacture = device.type.split()[0]
-                    device.manufacture = Netbox.Sync.manufacturer(manufacture=device.manufacture, tenant=tenant)
+                    device.manufacture = Nautobot.Sync.manufacturer(manufacture=device.manufacture, tenant=tenant)
 
                     # Sync Device Types
                     slug = System.Slug.create(device.family)
-                    device.family_type = Netbox.Sync.devicetype(
+                    device.family_type = Nautobot.Sync.devicetype(
                         manufacture=device.manufacture,
                         model=device.family,
                         slug=slug,
                         tenant=tenant,
                     )
                     # Add tag to devicetype
-                    Netbox.Sync.tags(
+                    Nautobot.Sync.tags(
                         task="update",
                         model="devicetype",
                         filter=slug,
@@ -283,16 +283,17 @@ class Data:
 
                     # Sync Device Roles
                     slug = System.Slug.create(device.role)
-                    device.role = Netbox.Sync.devicerole(role=device.role, slug=slug, tenant=tenant)
+                    device.role = Nautobot.Sync.devicerole(role=device.role, slug=slug, tenant=tenant)
 
                     # Sync Device IP Address
-                    device.primary_ip4 = Netbox.Sync.ipaddress(
+                    device.primary_ip4 = Nautobot.Sync.ipaddress(
+                    device.primary_ip4 = Nautobot.Sync.ipaddress(
                         tenant=tenant,
                         address=device.managementIpAddress,
                         hostname=device.hostname,
                     )
                     # Add tags to IP Address
-                    Netbox.Sync.tags(
+                    Nautobot.Sync.tags(
                         task="update",
                         model="ipaddress",
                         filter=device.primary_ip4,
@@ -306,16 +307,16 @@ class Data:
 
                     # Check if devices is reachable from Cisco DNA Center
                     if device.reachabilityStatus == "Reachable":
-                        device.status = DeviceStatusChoices.STATUS_ACTIVE
+                        device.status = Status.objects.get(slug="active")
                         device.status_label = "success"
                     else:
-                        device.status = DeviceStatusChoices.STATUS_FAILED
+                        device.status = Status.objects.get(slug="failed")
                         device.status_label = "danger"
 
                     # Sync Device and get status
-                    sync_status = Netbox.Sync.device(tenant=tenant, device=device)
+                    sync_status = Nautobot.Sync.device(tenant=tenant, device=device)
                     # Add tag to device
-                    Netbox.Sync.tags(
+                    Nautobot.Sync.tags(
                         task="update",
                         model="device",
                         filter=device.serialNumber,
@@ -334,8 +335,8 @@ class Data:
                     }
                     results.append(result)
 
-            # If device is removed in Cisco DNA Center, then remove in NetBox
-            Netbox.Purge.database(tenant=tenant, type="devices", data=results)
+            # If device is removed in Cisco DNA Center, then remove in Nautobot
+            Nautobot.Purge.database(tenant=tenant, type="devices", data=results)
 
             results = sorted(results, key=lambda k: k["name"], reverse=False)
             data[tenant] = results
@@ -343,9 +344,9 @@ class Data:
 
     def purge_tenant(**kwargs):
         """
-        Remove NetBox Tenant that is related to Cisco DNA Center
+        Remove Nautobot Tenant that is related to Cisco DNA Center
         """
-        results = Netbox.Purge.tenant(**kwargs)
+        results = Nautobot.Purge.tenant(**kwargs)
         return results
 
     @staticmethod
