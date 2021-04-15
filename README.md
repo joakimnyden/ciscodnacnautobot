@@ -50,6 +50,11 @@ It uses the Cisco DNA Center Platform APIs to sync data.
         'ciscodnacnautobot',
     ]
     ```
+
+- Migrate database in Nautobot
+    ```
+    # nautobot-server migrate
+    ```
 (More details at https://nautobot.readthedocs.io/en/latest/plugins/)
 
 
