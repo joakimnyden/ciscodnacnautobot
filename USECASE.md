@@ -5,7 +5,7 @@ _(Sync Cisco DNA Center Inventory with Nautobot)_
 This [Nautobot](https://nautobot.readthedocs.io/en/latest/) plugin allows you to sync Inventory from Cisco DNA Center to Nautobot Database.  
 Instead of manually entering all the serialnumbers, hostname and IP Addresses.
 
-Follow the instructions to setup Nautobot on their [documentation](https://nautobot.readthedocs.io/en/latest/#getting-started).  
+Follow the instructions to setup Nautobot on their [documentation](https://nautobot.readthedocs.io/en/latest/installation/).  
 You can use Cisco DevNet Sandboxes to test the plugin.
 
 ## Related Sandbox
