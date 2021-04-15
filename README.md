@@ -12,7 +12,7 @@ It uses the Cisco DNA Center Platform APIs to sync data.
 - Cisco DNA Center
     - Supported release: 1.3.3+
 - Nautbot
-    - Supported release: 2.10+
+    - Tested with: v1.0.0b3
 - Python
   - Version: 3.3+
 
@@ -36,14 +36,15 @@ It uses the Cisco DNA Center Platform APIs to sync data.
 
 ## Getting Started
 
-- Install the plugin from source  
-``` shell
-git clone https://github.com/joakimnyden/ciscodnacnautobot.git
-pip3 install -e ciscodnacnautbot
-```
+- Install the plugin from source
+    ```
+    # sudo -iu nautobot
+    # git clone https://github.com/joakimnyden/ciscodnacnautobot.git
+    # pip3 install -e ciscodnacnautbot
+    ```
 
 
-- Enable the plugin in ```configuration.py``` of Nautobot
+- Enable the plugin in ```nautobot_config.py``` of Nautobot
     ```
     PLUGINS = [
         'ciscodnacnautobot',
@@ -75,7 +76,8 @@ pip3 install -e ciscodnacnautbot
 
 ## Authors & Maintainers
 
-- Robert Csapo <rcsapo@cisco.com>
+- Robert Csapo <rcsapo@cisco.com> [Author]
+- Joakim Nydén <joakim.nyden@cygate.se> [Maintainer/Contributor]
 
 
 ## License
