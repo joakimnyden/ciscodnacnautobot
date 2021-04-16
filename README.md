@@ -28,7 +28,6 @@ It uses the Cisco DNA Center Platform APIs to sync data.
 ### Status  
 ![](./img/status.png)
 ### Sync  
-![](./img/task.png)  
 ![](./img/sync.png)
 ### Nautobot Inventory
 ![](./img/sites.png)  
